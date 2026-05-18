@@ -9,9 +9,6 @@ blueprint:
     z2m_keypad_path_set:
         name: MQTT Set Topic of your Zigbee2MQTT Keypad
         description: "This is the same as your State Topic, with the addition of /set. Example: zigbee2mqtt/Keypad/set"
-    pin:
-        name: Pincode
-        description: "The valid pin code to be accepted as correct by your alarm system. Example: 1234"
     control_panel:
         name: Control Panel
         description: "An alarm control panel. Example: https://www.home-assistant.io/integrations/manual"
@@ -19,6 +16,12 @@ blueprint:
         selector:
             entity:
                 domain: alarm_control_panel
+    notify_service:
+        name: Service de notification (Optionnel)
+        description: "Service notify à utiliser pour la notification de désarmement. Exemple: notify.notify"
+        default: "notify.notify"
+        selector:
+            text: {}
     action_arming:
         name: Action Arming
         description: "An action to be performed when the alarm panel changes to the arming state."
@@ -63,21 +66,21 @@ blueprint:
             action: {}
     custpin1:
         name: Custom PIN 1
-        default: 0000
+        default: "0000"
         description: "A custom PIN to trigger a custom action. Example: 0000"
     action_cust1:
         name: Action Custom 1
-        description: "An action to be performed when custom PIN 1 ist entered."
+        description: "An action to be performed when custom PIN 1 is entered."
         default: []
         selector:
             action: {}
     custpin2:
         name: Custom PIN 2
-        default: 1111
+        default: "1111"
         description: "A custom PIN to trigger a custom action. Example: 1111"
     action_cust2:
         name: Action Custom 2
-        description: "An action to be performed when custom PIN 2 ist entered."
+        description: "An action to be performed when custom PIN 2 is entered."
         default: []
         selector:
             action: {}
@@ -101,9 +104,10 @@ blueprint:
                 step: 5
 
 variables:
-  pin_var: !input 'pin'
   pin_var_cust1: !input 'custpin1'
   pin_var_cust2: !input 'custpin2'
+  control_panel_id: !input 'control_panel'
+  notify_service_var: !input 'notify_service'
 
 trigger:
   - platform: state
@@ -137,11 +141,9 @@ trigger:
     entity_id: !input sensor_entities
     to: 'on'
     id: entry_sensor_triggered
-    variables:
-      triggered_sensor: "{{ trigger.entity_id }}"
-      
+
 condition: []
-    
+
 action:
   - choose:
       - conditions:
@@ -158,13 +160,7 @@ action:
                   - service: mqtt.publish
                     data:
                       topic: !input 'z2m_keypad_path_set'
-                      payload: |-
-                        {
-                         "arm_mode": 
-                          {
-                           "mode": "arm_day_zones"
-                          }
-                        }
+                      payload: '{"arm_mode": {"mode": "arm_day_zones"}}'
               - conditions:
                   - condition: state
                     entity_id: !input 'control_panel'
@@ -174,13 +170,7 @@ action:
                   - service: mqtt.publish
                     data:
                       topic: !input 'z2m_keypad_path_set'
-                      payload: |-
-                        {
-                         "arm_mode": 
-                          {
-                           "mode": "exit_delay"
-                          }
-                        }
+                      payload: '{"arm_mode": {"mode": "exit_delay"}}'
               - conditions:
                   - condition: state
                     entity_id: !input 'control_panel'
@@ -190,16 +180,11 @@ action:
                   - service: mqtt.publish
                     data:
                       topic: !input 'z2m_keypad_path_set'
-                      payload: |-
-                        {
-                         "arm_mode": 
-                          {
-                           "mode": "arm_night_zones"
-                          }
-                        }
+                      payload: '{"arm_mode": {"mode": "arm_night_zones"}}'
             default: []
           - choose:
             default: !input 'action_arming'
+
       - conditions:
           - condition: trigger
             id: panel_armed_away
@@ -207,15 +192,10 @@ action:
           - service: mqtt.publish
             data:
               topic: !input 'z2m_keypad_path_set'
-              payload: |-
-                {
-                 "arm_mode": 
-                  {
-                   "mode": "arm_all_zones"
-                  }
-                }
+              payload: '{"arm_mode": {"mode": "arm_all_zones"}}'
           - choose:
             default: !input 'action_armed_away'
+
       - conditions:
           - condition: trigger
             id: panel_armed_home
@@ -223,15 +203,10 @@ action:
           - service: mqtt.publish
             data:
               topic: !input 'z2m_keypad_path_set'
-              payload: |-
-                {
-                 "arm_mode": 
-                  {
-                   "mode": "arm_day_zones"
-                  }
-                }
+              payload: '{"arm_mode": {"mode": "arm_day_zones"}}'
           - choose:
             default: !input 'action_armed_home'
+
       - conditions:
           - condition: trigger
             id: panel_armed_night
@@ -239,15 +214,10 @@ action:
           - service: mqtt.publish
             data:
               topic: !input 'z2m_keypad_path_set'
-              payload: |-
-                {
-                 "arm_mode": 
-                  {
-                   "mode": "arm_night_zones"
-                  }
-                }
+              payload: '{"arm_mode": {"mode": "arm_night_zones"}}'
           - choose:
             default: !input 'action_armed_night'
+
       - conditions:
           - condition: trigger
             id: panel_disarmed
@@ -255,21 +225,29 @@ action:
           - service: mqtt.publish
             data:
               topic: !input 'z2m_keypad_path_set'
-              payload: |-
-                {
-                 "arm_mode": 
-                  {
-                    "mode": "disarm"
-                  }
-                }
+              payload: '{"arm_mode": {"mode": "disarm"}}'
+          - variables:
+              who_disarmed: "{{ state_attr(control_panel_id, 'changed_by') | default('Inconnu') }}"
+          - service: "{{ notify_service_var }}"
+            data:
+              title: "🔓 Alarme désactivée"
+              message: >-
+                {{ who_disarmed }} a désactivé l'alarme à l'aide de son code
+                à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
           - choose:
             default: !input 'action_disarmed'
+
       - conditions:
           - condition: trigger
             id: panel_pending
         sequence:
+          - service: mqtt.publish
+            data:
+              topic: !input 'z2m_keypad_path_set'
+              payload: '{"arm_mode": {"mode": "entry_delay"}}'
           - choose:
             default: !input 'action_pending'
+
       - conditions:
           - condition: trigger
             id: entry_sensor_triggered
@@ -288,13 +266,8 @@ action:
           - service: mqtt.publish
             data:
               topic: !input 'z2m_keypad_path_set'
-              payload: |-
-                {
-                 "arm_mode": 
-                  {
-                   "mode": "entry_delay"
-                  }
-                }
+              payload: '{"arm_mode": {"mode": "entry_delay"}}'
+
       - conditions:
           - condition: trigger
             id: keypad_mqtt
@@ -303,80 +276,173 @@ action:
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action_transaction != null and
-                      trigger.payload_json.action_code == pin_var }}
+                      {{ trigger.payload_json.action_transaction is defined and
+                         trigger.payload_json.action_transaction != null }}
                 sequence:
                   - service: mqtt.publish
                     data:
                       topic: !input 'z2m_keypad_path_set'
                       payload: |-
                         {
-                         "arm_mode": 
-                          {
+                          "arm_mode": {
                             "transaction": "{{ trigger.payload_json.action_transaction }}",
                             "mode": "{{ trigger.payload_json.action }}"
                           }
                         }
+
           - choose:
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action_transaction != null and
-                      trigger.payload_json.action_code == pin_var_cust1 }}
+                      {{ trigger.payload_json.action_transaction is defined and
+                         trigger.payload_json.action_code | string == pin_var_cust1 | string }}
                 sequence:
                   - choose:
                     default: !input 'action_cust1'
+
           - choose:
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action_transaction != null and
-                      trigger.payload_json.action_code == pin_var_cust2 }}
+                      {{ trigger.payload_json.action_transaction is defined and
+                         trigger.payload_json.action_code | string == pin_var_cust2 | string }}
                 sequence:
                   - choose:
                     default: !input 'action_cust2'
+
           - choose:
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action == "arm_all_zones" }}
+                      {{ trigger.payload_json.action == "arm_all_zones" and
+                         trigger.payload_json.action_code is defined }}
                 sequence:
+                  - variables:
+                      state_before: "{{ states(control_panel_id) }}"
                   - service: alarm_control_panel.alarm_arm_away
                     target:
                       entity_id: !input 'control_panel'
                     data:
-                      code: !input 'pin'
+                      code: "{{ trigger.payload_json.action_code }}"
+                  - delay:
+                      milliseconds: 500
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ states(control_panel_id) == state_before }}"
+                        sequence:
+                          - service: mqtt.publish
+                            data:
+                              topic: !input 'z2m_keypad_path_set'
+                              payload: |-
+                                {
+                                  "arm_mode": {
+                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
+                                    "mode": "invalid_code"
+                                  }
+                                }
+
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action == "arm_day_zones" }}
+                      {{ trigger.payload_json.action == "arm_day_zones" and
+                         trigger.payload_json.action_code is defined }}
                 sequence:
+                  - variables:
+                      state_before: "{{ states(control_panel_id) }}"
                   - service: alarm_control_panel.alarm_arm_home
                     target:
                       entity_id: !input 'control_panel'
                     data:
-                      code: !input 'pin'
+                      code: "{{ trigger.payload_json.action_code }}"
+                  - delay:
+                      milliseconds: 500
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ states(control_panel_id) == state_before }}"
+                        sequence:
+                          - service: mqtt.publish
+                            data:
+                              topic: !input 'z2m_keypad_path_set'
+                              payload: |-
+                                {
+                                  "arm_mode": {
+                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
+                                    "mode": "invalid_code"
+                                  }
+                                }
+
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action == "arm_night_zones" }}
+                      {{ trigger.payload_json.action == "arm_night_zones" and
+                         trigger.payload_json.action_code is defined }}
                 sequence:
+                  - variables:
+                      state_before: "{{ states(control_panel_id) }}"
                   - service: alarm_control_panel.alarm_arm_night
                     target:
                       entity_id: !input 'control_panel'
                     data:
-                      code: !input 'pin'
+                      code: "{{ trigger.payload_json.action_code }}"
+                  - delay:
+                      milliseconds: 500
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ states(control_panel_id) == state_before }}"
+                        sequence:
+                          - service: mqtt.publish
+                            data:
+                              topic: !input 'z2m_keypad_path_set'
+                              payload: |-
+                                {
+                                  "arm_mode": {
+                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
+                                    "mode": "invalid_code"
+                                  }
+                                }
+
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action_code == pin_var and
-                      trigger.payload_json.action == "disarm" }}
+                      {{ trigger.payload_json.action == "disarm" and
+                         trigger.payload_json.action_code is defined }}
                 sequence:
+                  - variables:
+                      state_before: "{{ states(control_panel_id) }}"
                   - service: alarm_control_panel.alarm_disarm
                     target:
                       entity_id: !input 'control_panel'
                     data:
-                      code: !input 'pin'
+                      code: "{{ trigger.payload_json.action_code }}"
+                  - delay:
+                      milliseconds: 500
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ states(control_panel_id) == state_before }}"
+                        sequence:
+                          - service: mqtt.publish
+                            data:
+                              topic: !input 'z2m_keypad_path_set'
+                              payload: |-
+                                {
+                                  "arm_mode": {
+                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
+                                    "mode": "invalid_code"
+                                  }
+                                }
+                          - service: "{{ notify_service_var }}"
+                            data:
+                              title: "⚠️ Code invalide"
+                              message: >-
+                                Un code invalide a été saisi sur le clavier
+                                à {{ now().strftime('%H:%M') }}
+                                le {{ now().strftime('%d/%m/%Y') }}.
+
+
               - conditions:
                   - condition: template
                     value_template: >-
@@ -384,144 +450,85 @@ action:
                 sequence:
                   - choose:
                     default: !input 'action_panic'
-              - conditions:
-                  - condition: template
-                    value_template: >-
-                      {{ trigger.payload_json.action_code != pin_var and
-                      trigger.payload_json.action_code | int(-1) != -1 }}
-                sequence:
-                  - service: mqtt.publish
-                    data:
-                      topic: !input 'z2m_keypad_path_set'
-                      payload: |-
-                        {
-                         "arm_mode": 
-                          {
-                           "transaction": "{{ trigger.payload_json.action_transaction }}",
-                           "mode": "invalid_code"
-                          }
-                        }
+
             default:
-                  - choose:
-                      - conditions:
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: armed_away
-                        sequence:
-                          - service: mqtt.publish
-                            data:
-                              topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                 "arm_mode": 
-                                  {
-                                   "mode": "arm_all_zones"
-                                  }
-                                }
-                      - conditions:
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: armed_home
-                        sequence:
-                          - service: mqtt.publish
-                            data:
-                              topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                 "arm_mode": 
-                                  {
-                                   "mode": "arm_day_zones"
-                                  }
-                                }
-                      - conditions:
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: armed_night
-                        sequence:
-                          - service: mqtt.publish
-                            data:
-                              topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                 "arm_mode": 
-                                  {
-                                   "mode": "arm_night_zones"
-                                  }
-                                }
-                      - conditions:
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: disarmed
-                        sequence:
-                          - service: mqtt.publish
-                            data:
-                              topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                 "arm_mode": 
-                                  {
-                                   "mode": "disarm"
-                                  }
-                                }
-                      - conditions:
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: arming
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: armed_home
-                            attribute: next_state
-                        sequence:
-                          - service: mqtt.publish
-                            data:
-                              topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                 "arm_mode": 
-                                  {
-                                   "mode": "arm_day_zones"
-                                  }
-                                }
-                      - conditions:
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: arming
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: armed_away
-                            attribute: next_state
-                        sequence:
-                          - service: mqtt.publish
-                            data:
-                              topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                 "arm_mode": 
-                                  {
-                                   "mode": "arm_all_zones"
-                                  }
-                                }
-                      - conditions:
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: arming
-                          - condition: state
-                            entity_id: !input 'control_panel'
-                            state: armed_night
-                            attribute: next_state
-                        sequence:
-                          - service: mqtt.publish
-                            data:
-                              topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                 "arm_mode": 
-                                  {
-                                   "mode": "arm_night_zones"
-                                  }
-                                }
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: armed_away
+                    sequence:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: '{"arm_mode": {"mode": "arm_all_zones"}}'
+                  - conditions:
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: armed_home
+                    sequence:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: '{"arm_mode": {"mode": "arm_day_zones"}}'
+                  - conditions:
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: armed_night
+                    sequence:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: '{"arm_mode": {"mode": "arm_night_zones"}}'
+                  - conditions:
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: disarmed
+                    sequence:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: '{"arm_mode": {"mode": "disarm"}}'
+                  - conditions:
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: arming
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: armed_home
+                        attribute: next_state
+                    sequence:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: '{"arm_mode": {"mode": "arm_day_zones"}}'
+                  - conditions:
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: arming
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: armed_away
+                        attribute: next_state
+                    sequence:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: '{"arm_mode": {"mode": "arm_all_zones"}}'
+                  - conditions:
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: arming
+                      - condition: state
+                        entity_id: !input 'control_panel'
+                        state: armed_night
+                        attribute: next_state
+                    sequence:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: '{"arm_mode": {"mode": "arm_night_zones"}}'
     default: []
-      
 
 mode: parallel
 max: 10
