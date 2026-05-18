@@ -9,15 +9,15 @@ A comprehensive Home Assistant blueprint that provides full synchronization betw
 ### Core Functionality
 - **Bidirectional sync** between keypad and Home Assistant alarm panel
 - **All arming modes**: Away, Home, Night, and Disarm
-- **No PIN required for arming** - just press the button
-- **PIN required for disarming** - secure authentication
+- **No PIN required for arming** - just press the button (you can activate this functionality directly from alarmo)
+- **PIN required for disarming** - secure authentication (user/PIN added previously in alarmo)
 - **Entry delay beeping** - gentle reminder when entering through front door to turn disarm
 - **Custom PIN actions** - trigger special automations with wrong PINs
 - **Panic/SOS support** - emergency button functionality
 
 ### Security Features
-- **PIN validation** for disarming
-- **Invalid code handling** with keypad feedback
+- **PIN validation** for disarming (alarmo user/PIN)
+- **Invalid code handling** with keypad feedback and notify on phone
 - **Custom actions** for specific PIN codes
 - **Entry sensor monitoring** with configurable delay beeping
 
@@ -30,9 +30,7 @@ A comprehensive Home Assistant blueprint that provides full synchronization betw
 *Other keypads may work but are not officially supported. The MQTT commands and entry delay functionality are specifically designed for the KEPZB-110/KEYZB-110 models.*
 
 ### Compatible Alarm Panels
-- **Alarmo** (Recommended)
-- **Manual Alarm Control Panel**
-- Any Home Assistant alarm control panel entity
+- **Alarmo** 
 
 ## 🔧 Installation
 
@@ -110,9 +108,8 @@ A comprehensive Home Assistant blueprint that provides full synchronization betw
 |---------|---------|-------------|
 | **MQTT State Topic** | `zigbee2mqtt/Entrance_Keypad` | Your keypad's MQTT topic (zigbee2mqtt + friendly name) |
 | **MQTT Set Topic** | `zigbee2mqtt/Entrance_Keypad/set` | State topic + `/set` |
-| **Pincode** | `1234` | Main PIN for disarming |
 | **Control Panel** | `alarm_control_panel.home_alarm` | Your alarm panel entity |
-
+| **Notify service** | `alarm_control_panel.home_alarm` | default notify.notify (can add an other notify service)|
 ### Optional Settings
 
 | Setting | Default | Description |
@@ -136,7 +133,7 @@ A comprehensive Home Assistant blueprint that provides full synchronization betw
 ## 🎯 Usage Guide
 
 ### Arming the System
-**No PIN required** - just press the button:
+**No PIN required if it's not checked on alarmo settings** - just press the button:
 - **Away Button** → Arms all zones
 - **Home Button** → Arms day zones only
 - **Night Button** → Arms night zones only
@@ -270,37 +267,4 @@ The blueprint maintains perfect sync between keypad and Home Assistant:
 | `arming` | Exit Delay | Countdown timer |
 | `pending` | Entry Delay | Entry countdown + beep |
 
-## 📝 Changelog
-
-### v2.0 (Current)
-- ✅ Added complete night mode support
-- ✅ Added entry delay beeping for KEPZB-110
-- ✅ Removed PIN requirement for arming
-
-### v1.0 (Original)
-- Basic keypad sync
-- Missing night mode
-- Required PIN for arming
-
-## 🤝 Contributing
-
-Found a bug or have a feature request?
-- Test with your specific keypad model
-- Report issues with automation traces
-- Share configuration that works for your setup
-
-## 📄 License
-
-This blueprint is provided as-is for Home Assistant community use. Based on original work by AndrejDelany and community contributions.
-
----
-
-## 🆘 Support
-
-If you're having issues:
-1. **Check the troubleshooting section** above
-2. **Enable automation traces** and check for errors
-3. **Test individual components** (keypad, alarm panel, sensors)
-4. **Share your configuration** (with sensitive info removed) when asking for help
-
-**Happy automating! 🏠🔐**
+This blueprint is forked from https://github.com/michaeln64/KEPZB-110-BluePrint-Z2M thanks to him for doing a great job !
