@@ -1,17 +1,17 @@
 blueprint:
-  name: PIN-Keypad KEPZB-110 for Zigbee2MQTT
-  description: "This Blueprint allows the synchronisation of an alarm control panel with a Zigbee2MQTT keypad. This means that the status of the alarm control panel is transmitted to the keypad and vice versa. Additionally, you can set a custom action for two wrong PINs. This way you can perform actions by entering specific wrong PINs. Includes full support for Night Mode."
+  name: Clavier PIN KEPZB-110 pour Zigbee2MQTT & Alarmo
+  description: "Ce Blueprint permet la synchronisation d'un panneau de contrôle d'alarme avec un clavier Zigbee2MQTT via Alarmo. L'état du panneau d'alarme est transmis au clavier et vice versa."
   domain: automation
   input:
     z2m_keypad_path:
-        name: MQTT State Topic of your Zigbee2MQTT Keypad
-        description: "The State Topic is composed of your Zigbee2MQTT base_topic (see your Z2M Addon Configuration) and the Friendly Name of your keypad in Z2M. Example: zigbee2mqtt/Keypad"
+        name: Topic MQTT État de votre clavier Zigbee2MQTT
+        description: "Le Topic État est composé du base_topic de votre Zigbee2MQTT (voir la configuration de votre addon Z2M) et du nom convivial de votre clavier dans Z2M. Exemple: zigbee2mqtt/Clavier"
     z2m_keypad_path_set:
-        name: MQTT Set Topic of your Zigbee2MQTT Keypad
-        description: "This is the same as your State Topic, with the addition of /set. Example: zigbee2mqtt/Keypad/set"
+        name: Topic MQTT Set de votre clavier Zigbee2MQTT
+        description: "C'est le même que votre Topic État, avec l'ajout de /set. Exemple: zigbee2mqtt/Clavier/set"
     control_panel:
-        name: Control Panel
-        description: "An alarm control panel. Example: https://www.home-assistant.io/integrations/manual"
+        name: Panneau d'alarme
+        description: "Un panneau de contrôle d'alarme. Exemple: https://www.home-assistant.io/integrations/manual"
         default: []
         selector:
             entity:
@@ -22,92 +22,111 @@ blueprint:
         default: "notify.notify"
         selector:
             text: {}
+    failed_attempts_counter:
+        name: Entité compteur de tentatives échouées
+        description: "Entité counter créée dans configuration.yaml pour compter les codes invalides. Exemple: counter.failed_pin_attempts"
+        selector:
+            entity:
+                domain: counter
+    max_failed_attempts:
+        name: Nombre de tentatives avant alerte
+        description: "Nombre de codes erronés consécutifs avant de déclencher l'action d'alerte."
+        default: 4
+        selector:
+            number:
+                min: 1
+                max: 10
+                step: 1
+                mode: slider
+    action_max_attempts:
+        name: Action après trop de tentatives échouées
+        description: "Action déclenchée quand le nombre maximum de tentatives est atteint (ex: sirène, notification, snapshot caméra...)"
+        default: []
+        selector:
+            action: {}
+    enable_tamper:
+        name: Activer la détection d'ouverture du boîtier
+        description: "Si activé, une notification sera envoyée si le boîtier du clavier est ouvert alors que l'alarme est armée."
+        default: true
+        selector:
+            boolean: {}
+    action_tamper:
+        name: Action en cas d'ouverture du boîtier (Tamper)
+        description: "Action déclenchée quand le boîtier du clavier est ouvert (tamper) alors que l'alarme est armée."
+        default: []
+        selector:
+            action: {}
     action_arming:
-        name: Action Arming
-        description: "An action to be performed when the alarm panel changes to the arming state."
+        name: Action Armement en cours
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armement en cours."
         default: []
         selector:
             action: {}
     action_armed_home:
-        name: Action Armed Home
-        description: "An action to be performed when the alarm panel changes to the armed home state."
+        name: Action Armé à domicile
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armé à domicile."
         default: []
         selector:
             action: {}
     action_armed_away:
-        name: Action Armed Away
-        description: "An action to be performed when the alarm panel changes to the armed away state."
+        name: Action Armé absent
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armé absent."
         default: []
         selector:
             action: {}
     action_armed_night:
-        name: Action Armed Night
-        description: "An action to be performed when the alarm panel changes to the armed night state."
+        name: Action Armé nuit
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armé nuit."
         default: []
         selector:
             action: {}
     action_disarmed:
-        name: Action Disarmed
-        description: "An action to be performed when the alarm panel changes to the disarmed state."
+        name: Action Désarmé
+        description: "Action exécutée quand le panneau d'alarme passe à l'état désarmé."
         default: []
         selector:
             action: {}
     action_pending:
-        name: Action Pending
-        description: "An action to be performed when the alarm panel changes to the pending state."
+        name: Action En attente
+        description: "Action exécutée quand le panneau d'alarme passe à l'état en attente avant déclenchement."
         default: []
         selector:
             action: {}
     action_panic:
-        name: Action Panic
-        description: "An action to be performed when the panic / SOS button of the keypad is pressed."
+        name: Action Panique
+        description: "Action exécutée quand le bouton panique / SOS du clavier est pressé."
         default: []
         selector:
             action: {}
     custpin1:
-        name: Custom PIN 1
+        name: Code PIN personnalisé 1
         default: "0000"
-        description: "A custom PIN to trigger a custom action. Example: 0000"
+        description: "Un code PIN personnalisé pour déclencher une action. Exemple: 0000"
     action_cust1:
-        name: Action Custom 1
-        description: "An action to be performed when custom PIN 1 is entered."
+        name: Action Code personnalisé 1
+        description: "Action exécutée quand le code PIN personnalisé 1 est saisi."
         default: []
         selector:
             action: {}
     custpin2:
-        name: Custom PIN 2
+        name: Code PIN personnalisé 2
         default: "1111"
-        description: "A custom PIN to trigger a custom action. Example: 1111"
+        description: "Un code PIN personnalisé pour déclencher une action. Exemple: 1111"
     action_cust2:
-        name: Action Custom 2
-        description: "An action to be performed when custom PIN 2 is entered."
+        name: Action Code personnalisé 2
+        description: "Action exécutée quand le code PIN personnalisé 2 est saisi."
         default: []
         selector:
             action: {}
-    sensor_entities:
-        name: Entry Delay Sensors (Optional)
-        description: "Select entry sensors (doors) that should trigger entry delay beeps when opened while armed - giving you time to disarm"
-        default: []
-        selector:
-            entity:
-                domain: 
-                  - binary_sensor
-                multiple: true
-    entry_delay_duration:
-        name: Entry Delay Beep Duration
-        description: "How long the entry delay beep should continue (in seconds)"
-        default: 30
-        selector:
-            number:
-                min: 10
-                max: 120
-                step: 5
 
 variables:
   pin_var_cust1: !input 'custpin1'
   pin_var_cust2: !input 'custpin2'
   control_panel_id: !input 'control_panel'
   notify_service_var: !input 'notify_service'
+  failed_attempts_counter_id: !input 'failed_attempts_counter'
+  max_failed_attempts_var: !input 'max_failed_attempts'
+  enable_tamper_var: !input 'enable_tamper'
 
 trigger:
   - platform: state
@@ -137,10 +156,6 @@ trigger:
   - platform: mqtt
     topic: !input z2m_keypad_path
     id: keypad_mqtt
-  - platform: state
-    entity_id: !input sensor_entities
-    to: 'on'
-    id: entry_sensor_triggered
 
 condition: []
 
@@ -234,6 +249,9 @@ action:
               message: >-
                 {{ who_disarmed }} a désactivé l'alarme à l'aide de son code
                 à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+          - service: counter.reset
+            target:
+              entity_id: !input 'failed_attempts_counter'
           - choose:
             default: !input 'action_disarmed'
 
@@ -250,28 +268,26 @@ action:
 
       - conditions:
           - condition: trigger
-            id: entry_sensor_triggered
-          - condition: or
-            conditions:
-              - condition: state
-                entity_id: !input 'control_panel'
-                state: armed_away
-              - condition: state
-                entity_id: !input 'control_panel'
-                state: armed_home
-              - condition: state
-                entity_id: !input 'control_panel'
-                state: armed_night
-        sequence:
-          - service: mqtt.publish
-            data:
-              topic: !input 'z2m_keypad_path_set'
-              payload: '{"arm_mode": {"mode": "entry_delay"}}'
-
-      - conditions:
-          - condition: trigger
             id: keypad_mqtt
         sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ trigger.payload_json.tamper is defined and
+                         trigger.payload_json.tamper == true and
+                         enable_tamper_var == true and
+                         states(control_panel_id) in ['armed_away', 'armed_home', 'armed_night', 'arming', 'pending'] }}
+                sequence:
+                  - service: "{{ notify_service_var }}"
+                    data:
+                      title: "🔧 Alerte boîtier clavier ouvert"
+                      message: >-
+                        Le boîtier du clavier a été ouvert (tamper)
+                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                  - choose:
+                    default: !input 'action_tamper'
+
           - choose:
               - conditions:
                   - condition: template
@@ -341,6 +357,25 @@ action:
                                     "mode": "invalid_code"
                                   }
                                 }
+                          - service: counter.increment
+                            target:
+                              entity_id: !input 'failed_attempts_counter'
+                          - choose:
+                              - conditions:
+                                  - condition: template
+                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                                sequence:
+                                  - service: "{{ notify_service_var }}"
+                                    data:
+                                      title: "🚨 Alerte sécurité clavier"
+                                      message: >-
+                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
+                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                                  - choose:
+                                    default: !input 'action_max_attempts'
+                                  - service: counter.reset
+                                    target:
+                                      entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
@@ -372,6 +407,25 @@ action:
                                     "mode": "invalid_code"
                                   }
                                 }
+                          - service: counter.increment
+                            target:
+                              entity_id: !input 'failed_attempts_counter'
+                          - choose:
+                              - conditions:
+                                  - condition: template
+                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                                sequence:
+                                  - service: "{{ notify_service_var }}"
+                                    data:
+                                      title: "🚨 Alerte sécurité clavier"
+                                      message: >-
+                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
+                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                                  - choose:
+                                    default: !input 'action_max_attempts'
+                                  - service: counter.reset
+                                    target:
+                                      entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
@@ -403,6 +457,25 @@ action:
                                     "mode": "invalid_code"
                                   }
                                 }
+                          - service: counter.increment
+                            target:
+                              entity_id: !input 'failed_attempts_counter'
+                          - choose:
+                              - conditions:
+                                  - condition: template
+                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                                sequence:
+                                  - service: "{{ notify_service_var }}"
+                                    data:
+                                      title: "🚨 Alerte sécurité clavier"
+                                      message: >-
+                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
+                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                                  - choose:
+                                    default: !input 'action_max_attempts'
+                                  - service: counter.reset
+                                    target:
+                                      entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
@@ -441,12 +514,30 @@ action:
                                 Un code invalide a été saisi sur le clavier
                                 à {{ now().strftime('%H:%M') }}
                                 le {{ now().strftime('%d/%m/%Y') }}.
-
+                          - service: counter.increment
+                            target:
+                              entity_id: !input 'failed_attempts_counter'
+                          - choose:
+                              - conditions:
+                                  - condition: template
+                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                                sequence:
+                                  - service: "{{ notify_service_var }}"
+                                    data:
+                                      title: "🚨 Alerte sécurité clavier"
+                                      message: >-
+                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
+                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                                  - choose:
+                                    default: !input 'action_max_attempts'
+                                  - service: counter.reset
+                                    target:
+                                      entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ trigger.payload_json.action == "panic" }}
+                      {{ trigger.payload_json.action == "emergency" }}
                 sequence:
                   - choose:
                     default: !input 'action_panic'
