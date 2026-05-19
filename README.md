@@ -1,3 +1,4 @@
+[EN]
 # PIN-Keypads for Zigbee2MQTT (Complete with Night Mode & Entry Delay)
 
 A comprehensive Home Assistant blueprint that provides full synchronization between Zigbee2MQTT KEPZB-110 keypads and alarm control panels, including complete night mode support and entry delay beeping.
@@ -9,17 +10,21 @@ A comprehensive Home Assistant blueprint that provides full synchronization betw
 ### Core Functionality
 - **Bidirectional sync** between keypad and Home Assistant alarm panel
 - **All arming modes**: Away, Home, Night, and Disarm
-- **No PIN required for arming** - just press the button (you can activate this functionality directly from alarmo)
+- **optional PIN required for arming** - just press the button if you don't have checked option on Alarmo
 - **PIN required for disarming** - secure authentication (user/PIN added previously in alarmo)
 - **Entry delay beeping** - gentle reminder when entering through front door to turn disarm
 - **Custom PIN actions** - trigger special automations with wrong PINs
 - **Panic/SOS support** - emergency button functionality
 
+
 ### Security Features
 - **PIN validation** for disarming (alarmo user/PIN)
+- **notify service** - Notify who's disarm, fail atempts, alarm triggering
+- **tamper action** with configurable action
+- **Pin error attempt** with configurable action and number of fail before action (/!\ read ' ADD CODE TO CONFIGTURATION.YAML IN CONFIGURATION SECTION ! )
 - **Invalid code handling** with keypad feedback and notify on phone
 - **Custom actions** for specific PIN codes
-- **Entry sensor monitoring** with configurable delay beeping
+
 
 ## 📱 Supported Devices
 
@@ -102,24 +107,39 @@ A comprehensive Home Assistant blueprint that provides full synchronization betw
 
 ## ⚙️ Configuration
 
+add this code to configuration.yaml if you want to use error code counter
+```yaml
+counter:
+  failed_pin_attempts:
+    name: "Tentatives PIN Échouées"
+    initial: 0
+    step: 1
+```
+
+
 ### Required Settings
 
 | Setting | Example | Description |
 |---------|---------|-------------|
 | **MQTT State Topic** | `zigbee2mqtt/Entrance_Keypad` | Your keypad's MQTT topic (zigbee2mqtt + friendly name) |
 | **MQTT Set Topic** | `zigbee2mqtt/Entrance_Keypad/set` | State topic + `/set` |
-| **Control Panel** | `alarm_control_panel.home_alarm` | Your alarm panel entity |
-| **Notify service** | `alarm_control_panel.home_alarm` | default notify.notify (can add an other notify service)|
+| **Control Panel** | `alarm_control_panel.home_alarm` | Your alarmo panel entity |
+| **Notify service** | `notify.notify` | default notify.notify (can add an other notify service)|
+| **entity pin error counter** | `counter.YOURCOUNTERNAME` | Your counter entity addes in configuration.yaml
+| **number of pin error** | `4` | number of fail before start action
+| **action setting for counter** | `` | select an action (eg: trigger alarm)
+| **activate/desactivate tamper action** | `activate` | choose if you want activate tamper action
+| **action setting for tamper** | `` | select an action (eg: trigger alarm)
+
+
 ### Optional Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| **Entry Delay Sensors** | None | Doors that trigger entry delay beep |
-| **Entry Delay Duration** | 30 seconds | How long entry beep continues |
 | **Custom PIN 1** | `0000` | Special PIN for custom action 1 |
 | **Custom PIN 2** | `1111` | Special PIN for custom action 2 |
 
-### Action Settings (All Optional)
+### Action Settings (All Optional) (don't set pin code in action setting ! the codes are managed by Alarmo )
 - Action Arming
 - Action Armed Home
 - Action Armed Away  
@@ -144,12 +164,6 @@ A comprehensive Home Assistant blueprint that provides full synchronization betw
 2. Press **Disarm** button
 3. System disarms if PIN is correct
 
-### Entry Delay Behavior
-When you've configured entry sensors:
-1. **System is armed** (any mode)
-2. **Open entry door** → Keypad starts gentle beeping
-3. **Walk to keypad** and disarm within the delay period
-4. **Enter PIN + Disarm** → Beeping stops, system disarms
 
 ### Emergency/Panic
 - **Press and hold SOS button** → Triggers panic action
@@ -162,14 +176,6 @@ Configure special PINs that trigger custom automations:
 
 ## 🔧 Advanced Configuration
 
-### Entry Delay Sensors
-Select sensors that should trigger entry delay beeping:
-```yaml
-# Example sensors to select:
-- binary_sensor.front_door
-- binary_sensor.back_door
-- binary_sensor.garage_door
-```
 
 ### Custom Actions Examples
 
@@ -268,3 +274,107 @@ The blueprint maintains perfect sync between keypad and Home Assistant:
 | `pending` | Entry Delay | Entry countdown + beep |
 
 This blueprint is forked from https://github.com/michaeln64/KEPZB-110-BluePrint-Z2M thanks to him for doing a great job !
+
+[FR]
+
+# Claviers à code pour Zigbee2MQTT (Complet avec Mode Nuit & Délai d'Entrée)
+
+Un blueprint Home Assistant complet qui assure une synchronisation bidirectionnelle totale entre les claviers Zigbee2MQTT KEPZB-110 et les panneaux de contrôle d'alarme, incluant le support complet du mode nuit et les bips de délai d'entrée.
+
+## 🚀 Fonctionnalités
+
+### Fonctions principales
+- Synchronisation bidirectionnelle entre le clavier et le panneau d'alarme Home Assistant.
+- Tous les modes d'armement : Absent (Away), Présent (Home), Nuit (Night) et Désarmé.
+- Code PIN optionnel pour l'armement : appuyez simplement sur le bouton si l'option n'est pas cochée dans Alarmo.
+- Code PIN requis pour le désarmement : authentification sécurisée (utilisateurs/PIN configurés au préalable dans Alarmo).
+- Bips de délai d'entrée : rappel sonore doux lors de l'entrée pour vous avertir de désarmer le système.
+- Actions PIN personnalisées : déclenchez des automatisations spéciales avec des codes PIN spécifiques.
+- Support Panique/SOS : fonctionnalité du bouton d'urgence.
+
+### Sécurité
+- Validation du code PIN pour le désarmement (via les utilisateurs Alarmo).
+- Service de notification : notifie qui a désarmé, les tentatives échouées et le déclenchement de l'alarme.
+- Action anti-sabotage (Tamper) : action configurable si le boîtier est ouvert.
+- Tentatives de code erroné : action configurable et nombre d'échecs avant déclenchement (/!\ lisez la section 'AJOUTER LE CODE AU CONFIGURATION.YAML').
+- Gestion des codes invalides : retour visuel sur le clavier et notification sur téléphone.
+- Actions personnalisées pour des codes PIN spécifiques.
+
+## 📱 Appareils Supportés
+
+### Claviers compatibles
+- Frient KEPZB-110 (Cible principale)
+- Develco KEYZB-110 (Matériel identique au Frient)
+
+### Panneaux d'alarme compatibles
+- Alarmo
+
+## 🔧 Installation
+
+### Prérequis
+- Home Assistant avec Zigbee2MQTT.
+- Clavier Zigbee appairé à Zigbee2MQTT.
+- Panneau de contrôle d'alarme configuré dans Home Assistant.
+
+### Appairage de votre clavier Frient KEPZB-110
+
+#### Pour un clavier neuf
+1. Installez les piles (4x AA).
+2. Ouvrez l'interface Zigbee2MQTT.
+3. Activez le mode appairage :
+   - Cliquez sur le bouton "Permit join (All)".
+   - Réglez le délai sur 60 secondes ou plus.
+4. Activez l'appairage sur le clavier :
+   - Le clavier devrait entrer automatiquement en mode appairage au premier démarrage.
+   - Attendez que Zigbee2MQTT détecte l'appareil.
+
+#### Pour un clavier déjà utilisé
+1. Réinitialisez le clavier :
+   - Localisez le petit bouton reset à l'arrière de l'appareil.
+   - Maintenez le bouton reset enfoncé pendant 10 secondes ou plus.
+   - Relâchez le bouton - La LED devrait commencer à clignoter.
+2. Activez l'appairage dans Zigbee2MQTT.
+
+## ⚙️ Configuration
+
+Ajoutez ce code à votre fichier configuration.yaml :
+
+counter:
+  failed_pin_attempts:
+    name: "Tentatives PIN Échouées"
+    initial: 0
+    step: 1
+
+### Paramètres obligatoires
+- MQTT State Topic : zigbee2mqtt/NOM_DE_VOTRE_CLAVIER
+- MQTT Set Topic : zigbee2mqtt/NOM_DE_VOTRE_CLAVIER/set
+- Control Panel : Votre entité alarme (ex: alarm_control_panel.alarmo)
+- Entity pin error counter : counter.failed_pin_attempts
+
+## 🎯 Guide d'utilisation
+
+### Armer le système
+- Bouton Absent (Away) -> Arme toutes les zones.
+- Bouton Présent (Home) -> Arme zones jour.
+- Bouton Nuit (Night) -> Arme zones nuit.
+
+### Désarmer le système
+1. Saisissez votre code PIN.
+2. Appuyez sur le bouton Désarmer (Cadenas ouvert).
+
+### Urgence / Panique
+- Maintenez le bouton SOS enfoncé.
+
+## 🔄 Synchronisation des états
+
+| État Home Assistant | Affichage Clavier |
+|---------------------|-------------------|
+| disarmed            | Désarmé           |
+| armed_home          | Zones Jour        |
+| armed_night         | Zones Nuit        |
+| armed_away          | Toutes Zones      |
+| arming              | Délai de sortie   |
+| pending             | Délai d'entrée    |
+
+---
+Ce blueprint est un fork de https://github.com/michaeln64/KEPZB-110-BluePrint-Z2M.
