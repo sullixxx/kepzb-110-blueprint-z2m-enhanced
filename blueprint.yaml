@@ -18,16 +18,19 @@ blueprint:
                 domain: alarm_control_panel
     notify_service:
         name: Service de notification (Optionnel)
+        description: "Service notify à utiliser pour la notification de désarmement. Exemple: notify.notify"
         default: "notify.notify"
         selector:
             text: {}
     failed_attempts_counter:
         name: Entité compteur de tentatives échouées
+        description: "Entité counter créée dans configuration.yaml pour compter les codes invalides. Exemple: counter.failed_pin_attempts"
         selector:
             entity:
                 domain: counter
     max_failed_attempts:
         name: Nombre de tentatives avant alerte
+        description: "Nombre de codes erronés consécutifs avant de déclencher l'action d'alerte."
         default: 4
         selector:
             number:
@@ -37,67 +40,81 @@ blueprint:
                 mode: slider
     action_max_attempts:
         name: Action après trop de tentatives échouées
+        description: "Action déclenchée quand le nombre maximum de tentatives est atteint (ex: sirène, notification, snapshot caméra...)"
         default: []
         selector:
             action: {}
     enable_tamper:
         name: Activer la détection d'ouverture du boîtier
+        description: "Si activé, une notification sera envoyée si le boîtier du clavier est ouvert alors que l'alarme est armée."
         default: true
         selector:
             boolean: {}
     action_tamper:
         name: Action en cas d'ouverture du boîtier (Tamper)
+        description: "Action déclenchée quand le boîtier du clavier est ouvert (tamper) alors que l'alarme est armée."
         default: []
         selector:
             action: {}
     action_arming:
         name: Action Armement en cours
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armement en cours."
         default: []
         selector:
             action: {}
     action_armed_home:
         name: Action Armé à domicile
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armé à domicile."
         default: []
         selector:
             action: {}
     action_armed_away:
         name: Action Armé absent
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armé absent."
         default: []
         selector:
             action: {}
     action_armed_night:
         name: Action Armé nuit
+        description: "Action exécutée quand le panneau d'alarme passe à l'état armé nuit."
         default: []
         selector:
             action: {}
     action_disarmed:
         name: Action Désarmé
+        description: "Action exécutée quand le panneau d'alarme passe à l'état désarmé."
         default: []
         selector:
             action: {}
     action_pending:
         name: Action En attente
+        description: "Action exécutée quand le panneau d'alarme passe à l'état en attente avant déclenchement."
         default: []
         selector:
             action: {}
     action_panic:
         name: Action Panique
+        description: "Action exécutée quand le bouton panique / SOS du clavier est pressé."
         default: []
         selector:
             action: {}
     custpin1:
         name: Code PIN personnalisé 1
         default: "0000"
+        description: "Un code PIN personnalisé pour déclencher une action. Exemple: 0000"
     action_cust1:
         name: Action Code personnalisé 1
+        description: "Action exécutée quand le code PIN personnalisé 1 est saisi."
         default: []
         selector:
             action: {}
     custpin2:
         name: Code PIN personnalisé 2
         default: "1111"
+        description: "Un code PIN personnalisé pour déclencher une action. Exemple: 1111"
     action_cust2:
         name: Action Code personnalisé 2
+        description: "Action exécutée quand le code PIN personnalisé 2 est saisi."
         default: []
         selector:
             action: {}
