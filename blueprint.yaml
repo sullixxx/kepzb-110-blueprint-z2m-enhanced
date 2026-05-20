@@ -11,26 +11,23 @@ blueprint:
         description: "C'est le même que votre Topic État, avec l'ajout de /set. Exemple: zigbee2mqtt/Clavier/set"
     control_panel:
         name: Panneau d'alarme
-        description: "Un panneau de contrôle d'alarme. Exemple: https://www.home-assistant.io/integrations/manual"
+        description: "Un panneau de contrôle d'alarme."
         default: []
         selector:
             entity:
                 domain: alarm_control_panel
     notify_service:
         name: Service de notification (Optionnel)
-        description: "Service notify à utiliser pour la notification de désarmement. Exemple: notify.notify"
         default: "notify.notify"
         selector:
             text: {}
     failed_attempts_counter:
         name: Entité compteur de tentatives échouées
-        description: "Entité counter créée dans configuration.yaml pour compter les codes invalides. Exemple: counter.failed_pin_attempts"
         selector:
             entity:
                 domain: counter
     max_failed_attempts:
         name: Nombre de tentatives avant alerte
-        description: "Nombre de codes erronés consécutifs avant de déclencher l'action d'alerte."
         default: 4
         selector:
             number:
@@ -40,81 +37,67 @@ blueprint:
                 mode: slider
     action_max_attempts:
         name: Action après trop de tentatives échouées
-        description: "Action déclenchée quand le nombre maximum de tentatives est atteint (ex: sirène, notification, snapshot caméra...)"
         default: []
         selector:
             action: {}
     enable_tamper:
         name: Activer la détection d'ouverture du boîtier
-        description: "Si activé, une notification sera envoyée si le boîtier du clavier est ouvert alors que l'alarme est armée."
         default: true
         selector:
             boolean: {}
     action_tamper:
         name: Action en cas d'ouverture du boîtier (Tamper)
-        description: "Action déclenchée quand le boîtier du clavier est ouvert (tamper) alors que l'alarme est armée."
         default: []
         selector:
             action: {}
     action_arming:
         name: Action Armement en cours
-        description: "Action exécutée quand le panneau d'alarme passe à l'état armement en cours."
         default: []
         selector:
             action: {}
     action_armed_home:
         name: Action Armé à domicile
-        description: "Action exécutée quand le panneau d'alarme passe à l'état armé à domicile."
         default: []
         selector:
             action: {}
     action_armed_away:
         name: Action Armé absent
-        description: "Action exécutée quand le panneau d'alarme passe à l'état armé absent."
         default: []
         selector:
             action: {}
     action_armed_night:
         name: Action Armé nuit
-        description: "Action exécutée quand le panneau d'alarme passe à l'état armé nuit."
         default: []
         selector:
             action: {}
     action_disarmed:
         name: Action Désarmé
-        description: "Action exécutée quand le panneau d'alarme passe à l'état désarmé."
         default: []
         selector:
             action: {}
     action_pending:
         name: Action En attente
-        description: "Action exécutée quand le panneau d'alarme passe à l'état en attente avant déclenchement."
         default: []
         selector:
             action: {}
     action_panic:
         name: Action Panique
-        description: "Action exécutée quand le bouton panique / SOS du clavier est pressé."
         default: []
         selector:
             action: {}
     custpin1:
         name: Code PIN personnalisé 1
         default: "0000"
-        description: "Un code PIN personnalisé pour déclencher une action. Exemple: 0000"
     action_cust1:
         name: Action Code personnalisé 1
-        description: "Action exécutée quand le code PIN personnalisé 1 est saisi."
         default: []
         selector:
             action: {}
     custpin2:
         name: Code PIN personnalisé 2
         default: "1111"
-        description: "Un code PIN personnalisé pour déclencher une action. Exemple: 1111"
     action_cust2:
         name: Action Code personnalisé 2
-        description: "Action exécutée quand le code PIN personnalisé 2 est saisi."
         default: []
         selector:
             action: {}
@@ -270,6 +253,7 @@ action:
           - condition: trigger
             id: keypad_mqtt
         sequence:
+          # Tamper
           - choose:
               - conditions:
                   - condition: template
@@ -288,24 +272,7 @@ action:
                   - choose:
                     default: !input 'action_tamper'
 
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: >-
-                      {{ trigger.payload_json.action_transaction is defined and
-                         trigger.payload_json.action_transaction != null }}
-                sequence:
-                  - service: mqtt.publish
-                    data:
-                      topic: !input 'z2m_keypad_path_set'
-                      payload: |-
-                        {
-                          "arm_mode": {
-                            "transaction": "{{ trigger.payload_json.action_transaction }}",
-                            "mode": "{{ trigger.payload_json.action }}"
-                          }
-                        }
-
+          # PIN custom 1
           - choose:
               - conditions:
                   - condition: template
@@ -316,6 +283,7 @@ action:
                   - choose:
                     default: !input 'action_cust1'
 
+          # PIN custom 2
           - choose:
               - conditions:
                   - condition: template
@@ -326,6 +294,7 @@ action:
                   - choose:
                     default: !input 'action_cust2'
 
+          # Actions clavier
           - choose:
               - conditions:
                   - condition: template
@@ -345,37 +314,40 @@ action:
                   - choose:
                       - conditions:
                           - condition: template
-                            value_template: "{{ states(control_panel_id) == state_before }}"
+                            value_template: "{{ states(control_panel_id) != state_before }}"
                         sequence:
+                          # ✅ Code valide : confirmation positive
                           - service: mqtt.publish
                             data:
                               topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                  "arm_mode": {
-                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
-                                    "mode": "invalid_code"
-                                  }
-                                }
-                          - service: counter.increment
-                            target:
-                              entity_id: !input 'failed_attempts_counter'
-                          - choose:
-                              - conditions:
-                                  - condition: template
-                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
-                                sequence:
-                                  - service: "{{ notify_service_var }}"
-                                    data:
-                                      title: "🚨 Alerte sécurité clavier"
-                                      message: >-
-                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
-                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
-                                  - choose:
-                                    default: !input 'action_max_attempts'
-                                  - service: counter.reset
-                                    target:
-                                      entity_id: !input 'failed_attempts_counter'
+                              payload: >-
+                                {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "arm_all_zones"}}
+                    default:
+                      # ❌ Code invalide
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: >-
+                            {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "invalid_code"}}
+                      - service: counter.increment
+                        target:
+                          entity_id: !input 'failed_attempts_counter'
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                            sequence:
+                              - service: "{{ notify_service_var }}"
+                                data:
+                                  title: "🚨 Alerte sécurité clavier"
+                                  message: >-
+                                    {{ max_failed_attempts_var }} codes invalides saisis sur le clavier
+                                    à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                              - choose:
+                                default: !input 'action_max_attempts'
+                              - service: counter.reset
+                                target:
+                                  entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
@@ -395,37 +367,38 @@ action:
                   - choose:
                       - conditions:
                           - condition: template
-                            value_template: "{{ states(control_panel_id) == state_before }}"
+                            value_template: "{{ states(control_panel_id) != state_before }}"
                         sequence:
                           - service: mqtt.publish
                             data:
                               topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                  "arm_mode": {
-                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
-                                    "mode": "invalid_code"
-                                  }
-                                }
-                          - service: counter.increment
-                            target:
-                              entity_id: !input 'failed_attempts_counter'
-                          - choose:
-                              - conditions:
-                                  - condition: template
-                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
-                                sequence:
-                                  - service: "{{ notify_service_var }}"
-                                    data:
-                                      title: "🚨 Alerte sécurité clavier"
-                                      message: >-
-                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
-                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
-                                  - choose:
-                                    default: !input 'action_max_attempts'
-                                  - service: counter.reset
-                                    target:
-                                      entity_id: !input 'failed_attempts_counter'
+                              payload: >-
+                                {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "arm_day_zones"}}
+                    default:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: >-
+                            {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "invalid_code"}}
+                      - service: counter.increment
+                        target:
+                          entity_id: !input 'failed_attempts_counter'
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                            sequence:
+                              - service: "{{ notify_service_var }}"
+                                data:
+                                  title: "🚨 Alerte sécurité clavier"
+                                  message: >-
+                                    {{ max_failed_attempts_var }} codes invalides saisis sur le clavier
+                                    à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                              - choose:
+                                default: !input 'action_max_attempts'
+                              - service: counter.reset
+                                target:
+                                  entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
@@ -445,37 +418,38 @@ action:
                   - choose:
                       - conditions:
                           - condition: template
-                            value_template: "{{ states(control_panel_id) == state_before }}"
+                            value_template: "{{ states(control_panel_id) != state_before }}"
                         sequence:
                           - service: mqtt.publish
                             data:
                               topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                  "arm_mode": {
-                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
-                                    "mode": "invalid_code"
-                                  }
-                                }
-                          - service: counter.increment
-                            target:
-                              entity_id: !input 'failed_attempts_counter'
-                          - choose:
-                              - conditions:
-                                  - condition: template
-                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
-                                sequence:
-                                  - service: "{{ notify_service_var }}"
-                                    data:
-                                      title: "🚨 Alerte sécurité clavier"
-                                      message: >-
-                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
-                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
-                                  - choose:
-                                    default: !input 'action_max_attempts'
-                                  - service: counter.reset
-                                    target:
-                                      entity_id: !input 'failed_attempts_counter'
+                              payload: >-
+                                {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "arm_night_zones"}}
+                    default:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: >-
+                            {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "invalid_code"}}
+                      - service: counter.increment
+                        target:
+                          entity_id: !input 'failed_attempts_counter'
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                            sequence:
+                              - service: "{{ notify_service_var }}"
+                                data:
+                                  title: "🚨 Alerte sécurité clavier"
+                                  message: >-
+                                    {{ max_failed_attempts_var }} codes invalides saisis sur le clavier
+                                    à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                              - choose:
+                                default: !input 'action_max_attempts'
+                              - service: counter.reset
+                                target:
+                                  entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
@@ -495,44 +469,38 @@ action:
                   - choose:
                       - conditions:
                           - condition: template
-                            value_template: "{{ states(control_panel_id) == state_before }}"
+                            value_template: "{{ states(control_panel_id) != state_before }}"
                         sequence:
                           - service: mqtt.publish
                             data:
                               topic: !input 'z2m_keypad_path_set'
-                              payload: |-
-                                {
-                                  "arm_mode": {
-                                    "transaction": "{{ trigger.payload_json.action_transaction }}",
-                                    "mode": "invalid_code"
-                                  }
-                                }
-                          - service: "{{ notify_service_var }}"
-                            data:
-                              title: "⚠️ Code invalide"
-                              message: >-
-                                Un code invalide a été saisi sur le clavier
-                                à {{ now().strftime('%H:%M') }}
-                                le {{ now().strftime('%d/%m/%Y') }}.
-                          - service: counter.increment
-                            target:
-                              entity_id: !input 'failed_attempts_counter'
-                          - choose:
-                              - conditions:
-                                  - condition: template
-                                    value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
-                                sequence:
-                                  - service: "{{ notify_service_var }}"
-                                    data:
-                                      title: "🚨 Alerte sécurité clavier"
-                                      message: >-
-                                        {{ max_failed_attempts_var }} codes invalides ont été saisis consécutivement sur le clavier
-                                        à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
-                                  - choose:
-                                    default: !input 'action_max_attempts'
-                                  - service: counter.reset
-                                    target:
-                                      entity_id: !input 'failed_attempts_counter'
+                              payload: >-
+                                {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "disarm"}}
+                    default:
+                      - service: mqtt.publish
+                        data:
+                          topic: !input 'z2m_keypad_path_set'
+                          payload: >-
+                            {"arm_mode": {"transaction": {{ trigger.payload_json.action_transaction }}, "mode": "invalid_code"}}
+                      - service: counter.increment
+                        target:
+                          entity_id: !input 'failed_attempts_counter'
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ states(failed_attempts_counter_id) | int >= max_failed_attempts_var | int }}"
+                            sequence:
+                              - service: "{{ notify_service_var }}"
+                                data:
+                                  title: "🚨 Alerte sécurité clavier"
+                                  message: >-
+                                    {{ max_failed_attempts_var }} codes invalides saisis sur le clavier
+                                    à {{ now().strftime('%H:%M') }} le {{ now().strftime('%d/%m/%Y') }}.
+                              - choose:
+                                default: !input 'action_max_attempts'
+                              - service: counter.reset
+                                target:
+                                  entity_id: !input 'failed_attempts_counter'
 
               - conditions:
                   - condition: template
@@ -542,84 +510,6 @@ action:
                   - choose:
                     default: !input 'action_panic'
 
-            default:
-              - choose:
-                  - conditions:
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: armed_away
-                    sequence:
-                      - service: mqtt.publish
-                        data:
-                          topic: !input 'z2m_keypad_path_set'
-                          payload: '{"arm_mode": {"mode": "arm_all_zones"}}'
-                  - conditions:
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: armed_home
-                    sequence:
-                      - service: mqtt.publish
-                        data:
-                          topic: !input 'z2m_keypad_path_set'
-                          payload: '{"arm_mode": {"mode": "arm_day_zones"}}'
-                  - conditions:
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: armed_night
-                    sequence:
-                      - service: mqtt.publish
-                        data:
-                          topic: !input 'z2m_keypad_path_set'
-                          payload: '{"arm_mode": {"mode": "arm_night_zones"}}'
-                  - conditions:
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: disarmed
-                    sequence:
-                      - service: mqtt.publish
-                        data:
-                          topic: !input 'z2m_keypad_path_set'
-                          payload: '{"arm_mode": {"mode": "disarm"}}'
-                  - conditions:
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: arming
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: armed_home
-                        attribute: next_state
-                    sequence:
-                      - service: mqtt.publish
-                        data:
-                          topic: !input 'z2m_keypad_path_set'
-                          payload: '{"arm_mode": {"mode": "arm_day_zones"}}'
-                  - conditions:
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: arming
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: armed_away
-                        attribute: next_state
-                    sequence:
-                      - service: mqtt.publish
-                        data:
-                          topic: !input 'z2m_keypad_path_set'
-                          payload: '{"arm_mode": {"mode": "arm_all_zones"}}'
-                  - conditions:
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: arming
-                      - condition: state
-                        entity_id: !input 'control_panel'
-                        state: armed_night
-                        attribute: next_state
-                    sequence:
-                      - service: mqtt.publish
-                        data:
-                          topic: !input 'z2m_keypad_path_set'
-                          payload: '{"arm_mode": {"mode": "arm_night_zones"}}'
-    default: []
-
 mode: parallel
 max: 10
+
