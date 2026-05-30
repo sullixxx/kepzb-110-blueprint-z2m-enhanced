@@ -3,7 +3,7 @@
 
 A comprehensive Home Assistant blueprint that provides full synchronization between Zigbee2MQTT KEPZB-110 keypads and alarm control panels, including complete night mode support and entry delay beeping.
 
-[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://github.com/kekstyle/KEPZB-110-BluePrint-Z2M/blob/main/blueprint.yaml)
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://github.com/sullixxx/KEPZB-110-BluePrint-Z2M-enhanced/blob/main/blueprint.yaml)
 
 ## 🚀 Features
 
